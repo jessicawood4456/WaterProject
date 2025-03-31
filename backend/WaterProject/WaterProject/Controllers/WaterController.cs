@@ -16,14 +16,32 @@ namespace WaterProject.Controllers
         }
 
         [HttpGet("AllProjects")]
-        public IActionResult GetProjects(int pageSize = 5, int pageNum = 1)
+        public IActionResult GetProjects(int pageSize = 5, int pageNum = 1, [FromQuery] List<string>? projectTypes = null)
         {
-            var projects = _context.Projects
+            //string? favProjType = Request.Cookies["FavoriteProjectType"];
+            //Console.WriteLine("~~~~Cookie~~~~\n" + favProjType);
+            
+            HttpContext.Response.Cookies.Append("FavoriteProjectType", "Borehole Well and Hand Pump", new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = true,
+                SameSite = SameSiteMode.Strict,
+                Expires = DateTime.Now.AddMinutes(5),
+            });
+
+            var query = _context.Projects.AsQueryable();
+
+            if (projectTypes != null && projectTypes.Any() )
+            {
+                query = query.Where(p => projectTypes.Contains(p.ProjectType));
+            }
+
+            var totalNumProjects = query.Count();
+
+            var projects = query
                 .Skip((pageNum -1) * pageSize)
                 .Take(pageSize)
                 .ToList();
-
-            var totalNumProjects = _context.Projects.Count();
 
             var returnObject = new
             {
@@ -34,12 +52,57 @@ namespace WaterProject.Controllers
             return Ok(returnObject);
         }
 
-        [HttpGet("FunctionalProjects")]
-        public IEnumerable<Project> GetFunctionalProjects()
+        [HttpGet("GetProjectTypes")]
+        public IActionResult GetProjectTypes()
         {
-            var projects = _context.Projects.Where(p => p.ProjectFunctionalityStatus == "Functional").ToList();
+            var projectTypes = _context.Projects
+                .Select(p => p.ProjectType)
+                .Distinct()
+                .ToList();
 
-            return projects;
+            return Ok(projectTypes);
+        }
+
+        [HttpPost("addProject")]
+        public IActionResult AddProject([FromBody] Project newProject)
+        {
+            _context.Projects.Add(newProject);
+            _context.SaveChanges();
+            return Ok(newProject);
+        }
+
+        [HttpPut("updateProject/{projectId}")]
+        public IActionResult UpdateProject(int projectId, [FromBody] Project updatedProject)
+        {
+            var existingProject = _context.Projects.Find(projectId);
+            
+            existingProject.ProjectName = updatedProject.ProjectName;
+            existingProject.ProjectType = updatedProject.ProjectType;
+            existingProject.ProjectRegionalProgram = updatedProject.ProjectRegionalProgram;
+            existingProject.ProjectImpact = updatedProject.ProjectImpact;
+            existingProject.ProjectPhase = updatedProject.ProjectPhase;
+            existingProject.ProjectFunctionalityStatus = updatedProject.ProjectFunctionalityStatus;
+            
+            _context.Projects.Update(existingProject);
+            _context.SaveChanges();
+
+            return Ok(existingProject);
+        }
+
+        [HttpDelete("deleteProject/{projectId}")]
+        public IActionResult DeleteProject(int projectId)
+        {
+            var project = _context.Projects.Find(projectId);
+
+            if (project == null)
+            {
+                return NotFound(new {message = "Project nout found"});
+            }
+
+            _context.Projects.Remove(project);
+            _context.SaveChanges();
+
+            return NoContent();
         }
     }
 }
