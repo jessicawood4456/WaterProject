@@ -5,7 +5,8 @@ interface FetchProjectsResponse {
   totalNumProjects: number;
 }
 
-const API_URL = 'https://localhost:5000/Water';
+const API_URL =
+  'https://water-project-backend-h5e5fuf6apa3d9bh.eastus-01.azurewebsites.net/Water';
 
 export const fetchProjects = async (
   pageSize: number,
@@ -83,7 +84,7 @@ export const deleteProject = async (projectId: number): Promise<void> => {
     });
 
     if (!response.ok) {
-      throw new Error('Failed to dlete project.');
+      throw new Error('Failed to delete project.');
     }
   } catch (error) {
     console.error('Error deleting project: ', error);
